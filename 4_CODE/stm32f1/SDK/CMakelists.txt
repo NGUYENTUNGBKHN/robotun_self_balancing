@@ -1,0 +1,39 @@
+# SDK — builds stm32_lib static library for STM32F103xB
+# Equivalent to SDK/Makefile
+
+add_library(stm32_lib STATIC)
+
+# --------------------------------------------------------------------------
+# Sources
+# --------------------------------------------------------------------------
+file(GLOB SDK_DEVICE_SRC   "${CMAKE_CURRENT_SOURCE_DIR}/Device/Src/*.c")
+file(GLOB SDK_HAL_SRC      "${CMAKE_CURRENT_SOURCE_DIR}/Driver/hal/Src/*.c")
+file(GLOB SDK_HAL_LEG_SRC  "${CMAKE_CURRENT_SOURCE_DIR}/Driver/hal/Src/Legacy/*.c")
+
+# Exclude template files from compilation
+list(FILTER SDK_HAL_SRC EXCLUDE REGEX "template\\.c$")
+
+target_sources(stm32_lib PRIVATE
+    ${SDK_DEVICE_SRC}
+    ${SDK_HAL_SRC}
+    ${SDK_HAL_LEG_SRC}
+)
+
+# --------------------------------------------------------------------------
+# Include directories (PUBLIC so dependents inherit them)
+# --------------------------------------------------------------------------
+target_include_directories(stm32_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Device/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Driver/hal
+    ${CMAKE_CURRENT_SOURCE_DIR}/Driver/hal/Inc
+)
+
+# --------------------------------------------------------------------------
+# Compile flags — (-O0 -g for library)
+# --------------------------------------------------------------------------
+target_compile_options(stm32_lib PRIVATE
+    -mcpu=cortex-m3 -mthumb -mabi=aapcs
+    -O0 -g
+    -DSTM32F103xB
+)

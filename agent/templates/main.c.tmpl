@@ -1,0 +1,151 @@
+/*
+****************************************************************************************************************
+ * @file       main.c
+ * @brief      Application entry point for {{MCU}} with Azure RTOS ThreadX
+ * @date       {{DATE}}
+ * @author     [Gentantun] (nguyenthanhtung8196@gmail.com)
+ * @details    Initialises hardware, clocks, user LED, debug UART, stepper driver, and starts ThreadX.
+ * @ref        agent/templates/main.c.tmpl
+ * @copyright  Copyright (c) {{YEAR}} RoboTun
+****************************************************************************************************************
+*/
+/***************************************************************************************************************
+**                                                   INCLUDES
+***************************************************************************************************************/
+#include "main.h"
+#include "tx_api.h"
+#include "debug_uart.h"
+#include "stepper.h"
+
+/***************************************************************************************************************
+**                                          INTERNAL MACRO DEFINITIONS
+***************************************************************************************************************/
+#define DEMO_STACK_SIZE         1024U
+#define DEMO_BYTE_POOL_SIZE     9120U
+
+/***************************************************************************************************************
+**                                        INTERNAL VARIABLE DEFINITIONS
+***************************************************************************************************************/
+static stepper_t    *stepper_driver = NULL;
+static ULONG        thread_0_counter = 0U;
+static ULONG        thread_1_counter = 0U;
+
+static TX_BYTE_POOL byte_pool_0;
+static TX_THREAD    thread_0;
+static TX_THREAD    thread_1;
+static UCHAR        memory_area[DEMO_BYTE_POOL_SIZE];
+
+/***************************************************************************************************************
+**                                         INTERNAL FUNCTION PROTOTYPES
+***************************************************************************************************************/
+static void SystemClock_Config(void);
+static void Error_Handler(void);
+static void thread_0_entry(ULONG thread_input);
+static void thread_1_entry(ULONG thread_input);
+
+/***************************************************************************************************************
+**                                             FUNCTION DEFINITIONS
+***************************************************************************************************************/
+
+int main(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+
+    debug_uart_init();
+
+    stepper_driver = stepper_create();
+    if (stepper_driver == NULL)
+    {
+        Error_Handler();
+    }
+    stepper_driver->stepper_init();
+
+    TRACE_INFO("{{MCU}} Application started\\n");
+
+    tx_kernel_enter();
+
+    while (1)
+    {
+    }
+}
+
+void tx_application_define(void *first_unused_memory)
+{
+    CHAR *pointer = TX_NULL;
+    (void)first_unused_memory;
+
+    tx_byte_pool_create(&byte_pool_0, "byte pool 0", memory_area, DEMO_BYTE_POOL_SIZE);
+
+    tx_byte_allocate(&byte_pool_0, (VOID **)&pointer, DEMO_STACK_SIZE, TX_NO_WAIT);
+    tx_thread_create(&thread_0, "thread 0", thread_0_entry, 0UL,
+                     pointer, DEMO_STACK_SIZE,
+                     1U, 1U, TX_NO_TIME_SLICE, TX_AUTO_START);
+
+    tx_byte_allocate(&byte_pool_0, (VOID **)&pointer, DEMO_STACK_SIZE, TX_NO_WAIT);
+    tx_thread_create(&thread_1, "thread 1", thread_1_entry, 1UL,
+                     pointer, DEMO_STACK_SIZE,
+                     16U, 16U, 4U, TX_AUTO_START);
+
+    TRACE_INFO("OS init done.\\n");
+}
+
+static void thread_0_entry(ULONG thread_input)
+{
+    (void)thread_input;
+    uint32_t flag = 1U;
+
+    while (1)
+    {
+        thread_0_counter++;
+
+        if (stepper_driver != NULL)
+        {
+            if (flag == 1U)
+            {
+                if (!stepper_driver->stepper_is_busy())
+                {
+                    stepper_driver->stepper_move_steps(2000U, STEPPER_FORWARD, 1000U);
+                    flag = 0U;
+                }
+            }
+            else
+            {
+                if (!stepper_driver->stepper_is_busy())
+                {
+                    stepper_driver->stepper_move_steps(2000U, STEPPER_REVERSE, 1000U);
+                    flag = 1U;
+                }
+            }
+        }
+
+        tx_thread_sleep(500U);
+    }
+}
+
+static void thread_1_entry(ULONG thread_input)
+{
+    (void)thread_input;
+
+    while (1)
+    {
+        thread_1_counter++;
+        tx_thread_sleep(10U);
+    }
+}
+
+static void SystemClock_Config(void)
+{
+    /* Configure target PLL and bus prescalers */
+}
+
+static void Error_Handler(void)
+{
+    while (1)
+    {
+    }
+}
+
+/***************************************************************************************************************
+**                                                End of file
+***************************************************************************************************************/

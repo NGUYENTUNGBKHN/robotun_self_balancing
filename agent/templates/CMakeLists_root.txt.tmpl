@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.20)
+
+# Must be set BEFORE project() so toolchain is picked up
+# Usage: cmake -B _build -DCMAKE_TOOLCHAIN_FILE=Cmake/arm-none-eabi.cmake -G "MinGW Makefiles"
+
+project(ACE C ASM)
+
+# --------------------------------------------------------------------------
+# Global MCU flags
+# --------------------------------------------------------------------------
+set(MCU_CPU_FLAGS "-mcpu={{CORE}} -mthumb -mabi=aapcs")
+{{FPU_FLAGS_LINE}}
+set(MCU_DEFINES   "-D{{MCU_DEFINE}}")
+
+set(MCU_FLAGS "${MCU_CPU_FLAGS} ${MCU_FPU_FLAGS}" CACHE STRING "MCU compiler flags")
+
+find_program(CMAKE_OBJCOPY arm-none-eabi-objcopy HINTS $ENV{TOOLCHAIN_TUNG})
+
+# --------------------------------------------------------------------------
+# Flash Probe Interface (Default: JLINK)
+# --------------------------------------------------------------------------
+set(PROBE_PORT "JLINK" CACHE STRING "Programming probe interface (JLINK, SWD, etc.)")
+
+# --------------------------------------------------------------------------
+# Subdirectories — order matters (dependencies first)
+# --------------------------------------------------------------------------
+add_subdirectory(SDK)
+add_subdirectory(OS/threadx)
+add_subdirectory(Bootloader)
+add_subdirectory(Application)
