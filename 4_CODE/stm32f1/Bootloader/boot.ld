@@ -21,8 +21,8 @@ _Min_Stack_Size = 0x400;
 MEMORY
 {
   RAM       (xrw) : ORIGIN = 0x20000000, LENGTH = 20K
-  FLASH     (rx)  : ORIGIN = 0x08000000, LENGTH = 32K
-  DWL_FLASH (rx)  : ORIGIN = 0x08008000, LENGTH = 32K
+  FLASH     (rx)  : ORIGIN = 0x08000000, LENGTH = 16K
+  DWL_FLASH (rx)  : ORIGIN = 0x08004000, LENGTH = 16K
 }
 
 SECTIONS
@@ -75,7 +75,7 @@ SECTIONS
   } >RAM AT> FLASH
 
   /* Download entry function table placed in DWL_FLASH */
-  .entry_dwl 0x08008000 :
+  .entry_dwl 0x08004000 :
   {
     KEEP(*(.entry_dwl))
   } >DWL_FLASH

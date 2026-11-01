@@ -19,8 +19,7 @@
 #include "main.h"
 #include "tx_api.h"
 #include "debug_uart.h"
-#include "stepper.h"
-
+#include "MPU6500_driver.h"
 /***************************************************************************************************************
 **                                          INTERNAL MACRO DEFINITIONS
 ***************************************************************************************************************/
@@ -31,7 +30,6 @@
 /***************************************************************************************************************
 **                                        INTERNAL VARIABLE DEFINITIONS
 ***************************************************************************************************************/
-static stepper_t    *stepper_driver = NULL;
 
 static ULONG        thread_0_counter = 0U;
 static ULONG        thread_1_counter = 0U;
@@ -50,6 +48,8 @@ static void Error_Handler(void);
 /* ThreadX thread entry functions */
 static void thread_0_entry(ULONG thread_input);
 static void thread_1_entry(ULONG thread_input);
+
+static MPU6500_driver_t *mpu;
 
 /***************************************************************************************************************
 **                                             FUNCTION DEFINITIONS
@@ -88,6 +88,7 @@ void toggle_led(void)
  */
 int main(void)
 {
+    int16_t accel[3], gyro[3];
     /* Initialise HAL */
     HAL_Init();
 
@@ -97,16 +98,12 @@ int main(void)
     /* Peripheral initialisations */
     led_init();
     debug_uart_init();
-
-    /* Initialise stepper motor driver */
-    stepper_driver = stepper_create();
-    if (stepper_driver == NULL)
-    {
-        Error_Handler();
-    }
-    stepper_driver->stepper_init();
-
     TRACE_INFO("STM32F1 Application started\n");
+    mpu = MPU6500_driver_create();
+    if (mpu->init(mpu) == HAL_OK) 
+    {
+        mpu->readRawData(mpu, accel, gyro);
+    }
 
     /* Hand control to the ThreadX kernel — never returns */
     tx_kernel_enter();
@@ -153,14 +150,19 @@ void tx_application_define(void *first_unused_memory)
  */
 static void thread_0_entry(ULONG thread_input)
 {
+    int16_t accel[3], gyro[3];
     (void)thread_input;
 
     while (1)
     {
         thread_0_counter++;
+        mpu->readRawData(mpu, accel, gyro);
+        TRACE_INFO("accel : (%x, %x, %x) \n", accel[0], accel[1], accel[2]);
+        TRACE_INFO("gyro  : (%x, %x, %x) \n", gyro[0], gyro[1], gyro[2]);
+        
 
         /* Sleep 500 ThreadX ticks (500 ms @ 100 Hz tick) */
-        tx_thread_sleep(500U);
+        tx_thread_sleep(50U);
     }
 }
 

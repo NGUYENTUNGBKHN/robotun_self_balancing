@@ -36,15 +36,15 @@ extern "C"
  * --------------------------------------------------------------------------- */
 /* Bootloader partition (32 KB) */
 #define BOOT_START_ADDRESS          0x08000000U
-#define BOOT_SIZE                   0x00008000U     /* 32 KB */
+#define BOOT_SIZE                   0x00004000U     /* 16 KB */
 
 /* Download / DFU staging partition (32 KB) */
-#define DWL_START_ADDRESS           0x08008000U
-#define DWL_SIZE                    0x00008000U     /* 32 KB */
+#define DWL_START_ADDRESS           0x08004000U
+#define DWL_SIZE                    0x00004000U     /* 16 KB */
 
 /* Application partition (64 KB) */
-#define APP_START_ADDRESS           0x08010000U
-#define APP_SIZE                    0x00010000U     /* 64 KB */
+#define APP_START_ADDRESS           0x08008000U
+#define APP_SIZE                    0x00018000U     /* 96 KB */
 
 /* ---------------------------------------------------------------------------
  * Download entry-point jump helpers

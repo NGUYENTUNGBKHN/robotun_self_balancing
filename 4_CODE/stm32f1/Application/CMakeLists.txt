@@ -4,15 +4,16 @@
 # --------------------------------------------------------------------------
 # Sources
 # --------------------------------------------------------------------------
-file(GLOB APP_C_SRC     "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
-file(GLOB APP_ASM_S_SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.S")   # uppercase .S (pre-processed)
-file(GLOB APP_ASM_s_SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.s")   # lowercase .s
+file(GLOB APP_C_SRC            "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
+file(GLOB APP_ASM_S_SRC        "${CMAKE_CURRENT_SOURCE_DIR}/*.S")   # uppercase .S (pre-processed)
+file(GLOB APP_ASM_s_SRC        "${CMAKE_CURRENT_SOURCE_DIR}/*.s")   # lowercase .s
+file(GLOB APP_MILD_C_SRC       "${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro/*.c")
 
 add_executable(app
     ${APP_C_SRC}
-    ${CMAKE_SOURCE_DIR}/Middleware/Stepper/stepper.c
     ${APP_ASM_S_SRC}
     ${APP_ASM_s_SRC}
+    ${APP_MILD_C_SRC}
 )
 
 # --------------------------------------------------------------------------
@@ -22,7 +23,7 @@ target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/
     ${CMAKE_SOURCE_DIR}/Common
-    ${CMAKE_SOURCE_DIR}/Middleware/Stepper
+    ${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro
 )
 
 # --------------------------------------------------------------------------
@@ -30,7 +31,7 @@ target_include_directories(app PRIVATE
 # --------------------------------------------------------------------------
 target_compile_options(app PRIVATE
     -mcpu=cortex-m3 -mthumb -mabi=aapcs
-    -O2 -g3
+    -O3 -g3
     -ffunction-sections -fdata-sections
     -fno-strict-aliasing -fno-builtin -fshort-enums
     -Wall -Wno-unused-variable
@@ -44,7 +45,7 @@ set(APP_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/app.ld")
 
 target_link_options(app PRIVATE
     -mcpu=cortex-m3 -mthumb -mabi=aapcs
-    -O2 -g3
+    -O3 -g3
     --specs=nano.specs
     -Wl,--gc-sections
     -T${APP_LINKER_SCRIPT}

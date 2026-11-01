@@ -49,7 +49,7 @@ int boot_main(void)
     /* Check whether to boot application or stay in bootloader mode */
     /* Verification check: Valid stack pointer at APP_START_ADDRESS */
     uint32_t app_msp = *(volatile uint32_t *)APP_START_ADDRESS;
-    if (1)
+    if (app_msp != 0xFFFFFFFF)
     {
         TRACE_INFO("Jumping to application at 0x%08X\n", APP_START_ADDRESS);
         jump_to_application();

@@ -21,6 +21,12 @@ extern "C"
 #include <stdio.h>
 #include "stm32f1xx.h"
 
+typedef enum Code_Status_S
+{
+    ACE_SUCCESS = 0,
+    ACE_ERROR
+}code_status_t;
+
 #define DEBUG
 #if defined(DEBUG)
 /* TRACE info : normal log */

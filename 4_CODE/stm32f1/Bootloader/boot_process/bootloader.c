@@ -34,7 +34,7 @@ void _entry_download2(void);
 **                                             FUNCTION DEFINITIONS
 ***************************************************************************************************************/
 
-/* Entry function table placed at DWL_START_ADDRESS (0x08008000) */
+/* Entry function table placed at DWL_START_ADDRESS (0x08004000) */
 void (*const _entry_dwl_func[])(void) __attribute__((section(".entry_dwl"), used)) =
 {
     _entry_download,

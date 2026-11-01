@@ -36,7 +36,7 @@ target_include_directories(boot PRIVATE
 # --------------------------------------------------------------------------
 target_compile_options(boot PRIVATE
     -mcpu=cortex-m3 -mthumb -mabi=aapcs
-    -O2 -g3
+    -O3 -g3
     -ffunction-sections -fdata-sections
     -fno-strict-aliasing -fno-builtin -fshort-enums
     -Wall -Wno-unused-variable
@@ -50,7 +50,7 @@ set(BOOT_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/boot.ld")
 
 target_link_options(boot PRIVATE
     -mcpu=cortex-m3 -mthumb -mabi=aapcs
-    -O2 -g3
+    -O3 -g3
     --specs=nano.specs
     -Wl,--gc-sections
     -T${BOOT_LINKER_SCRIPT}
