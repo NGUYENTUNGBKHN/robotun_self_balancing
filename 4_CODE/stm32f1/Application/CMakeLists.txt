@@ -7,7 +7,10 @@
 file(GLOB APP_C_SRC            "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 file(GLOB APP_ASM_S_SRC        "${CMAKE_CURRENT_SOURCE_DIR}/*.S")   # uppercase .S (pre-processed)
 file(GLOB APP_ASM_s_SRC        "${CMAKE_CURRENT_SOURCE_DIR}/*.s")   # lowercase .s
-file(GLOB APP_MILD_C_SRC       "${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro/*.c")
+file(GLOB APP_MILD_C_SRC       "${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro/*.c"
+                               "${CMAKE_SOURCE_DIR}/Middleware/Encoder/*.c"
+                               "${CMAKE_SOURCE_DIR}/Middleware/Motor/*.c"
+                               "${CMAKE_SOURCE_DIR}/Middleware/PID/*.c")
 
 add_executable(app
     ${APP_C_SRC}
@@ -24,6 +27,9 @@ target_include_directories(app PRIVATE
     ${CMAKE_SOURCE_DIR}/
     ${CMAKE_SOURCE_DIR}/Common
     ${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro
+    ${CMAKE_SOURCE_DIR}/Middleware/Encoder
+    ${CMAKE_SOURCE_DIR}/Middleware/Motor
+    ${CMAKE_SOURCE_DIR}/Middleware/PID
 )
 
 # --------------------------------------------------------------------------
@@ -60,6 +66,7 @@ set_target_properties(app PROPERTIES OUTPUT_NAME "app" SUFFIX ".elf")
 target_link_libraries(app PRIVATE
     stm32_lib
     tx_m3
+    m
 )
 
 # --------------------------------------------------------------------------
@@ -84,8 +91,8 @@ endif()
 add_custom_target(flash_app
     DEPENDS app
     COMMAND STM32_Programmer_CLI.exe -c port=${PROBE_PORT} reset=HWrst
-        -w ${CMAKE_CURRENT_BINARY_DIR}/app.bin 0x08010000 -v -hardRst
-    COMMENT "Flashing app.bin to internal flash at 0x08010000 via ${PROBE_PORT}"
+        -w ${CMAKE_CURRENT_BINARY_DIR}/app.bin 0x08008000 -v -hardRst
+    COMMENT "Flashing app.bin to internal flash at 0x08008000 via ${PROBE_PORT}"
 )
 
 # Erase all flash

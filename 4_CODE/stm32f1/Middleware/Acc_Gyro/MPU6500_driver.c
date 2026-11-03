@@ -29,15 +29,7 @@
 /***************************************************************************************************************
 **                                          INTERNAL MACRO DEFINITIONS
 ***************************************************************************************************************/
-#define MPU6500_I2C_ADDR          (0x68U << 1)  /* 7-bit address 0x68 shifted for HAL */
-#define MPU6500_WHO_AM_I_REG      0x75U
-#define MPU6500_PWR_MGMT_1_REG    0x6BU
-#define MPU6500_SMPLRT_DIV_REG    0x19U
-#define MPU6500_CONFIG_REG        0x1AU
-#define MPU6500_GYRO_CONFIG_REG   0x1BU
-#define MPU6500_ACCEL_CONFIG_REG  0x1CU
-#define MPU6500_ACCEL_XOUT_H_REG  0x3BU
-#define MPU6500_I2C_TIMEOUT_MS    100U
+
 
 /***************************************************************************************************************
 **                                         COMMON VARIABLE DEFINITIONS
@@ -64,9 +56,9 @@ static code_status_t MPU6500_I2C_Init(void);
  */
 static code_status_t MPU6500_I2C_Init(void)
 {
-    hi2c1.Instance             = I2C1;
-    hi2c1.Init.ClockSpeed      = 100000U;               /* 100 kHz standard mode */
-    hi2c1.Init.DutyCycle       = I2C_DUTYCYCLE_2;
+    hi2c1.Instance             = MPU6500_INSTANCE;
+    hi2c1.Init.ClockSpeed      = MPU6500_CLOCK_SPEED;
+    hi2c1.Init.DutyCycle       = MPU6500_DUTY_CYCLE;
     hi2c1.Init.OwnAddress1     = 0x00U;
     hi2c1.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
     hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -179,7 +171,7 @@ uint32_t MPU6500_ReadRegs(MPU6500_driver_t *self, uint8_t reg, uint8_t *data, ui
 }
 
 /**
- * @brief  Read WHO_AM_I register (should return 0x68)
+ * @brief  Read WHO_AM_I register (should return 0x70 for MPU6500)
  * @param  self: Driver instance
  * @param  id: Pointer to store WHO_AM_I value
  * @return HAL status
@@ -206,44 +198,59 @@ uint32_t MPU6500_Init(MPU6500_driver_t *self)
     /* Wait for sensor to power up */
     HAL_Delay(100);
 
-    /* Verify WHO_AM_I register */
+    /* Verify WHO_AM_I register (0x70 for MPU6500) */
     status = (HAL_StatusTypeDef)MPU6500_WhoAmI(self, &who_am_i);
-    if (status != HAL_OK || who_am_i != 0x70U)
+    if (status != HAL_OK || who_am_i != MPU6500_WHO_AM_I_VAL)
     {
         return (uint32_t)HAL_ERROR;
     }
+
+    /* Reset device to ensure clean state */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_PWR_MGMT_1, 0x80U);
+    if (status != HAL_OK)
+    {
+        return (uint32_t)status;
+    }
+    HAL_Delay(100);
     
-    /* Wake up MPU6500 (clear sleep bit) */
-    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_PWR_MGMT_1_REG, 0x00U);
+    /* Wake up MPU6500 and select Auto Clock Source (PLL with Gyro reference: 0x01) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_PWR_MGMT_1, 0x01U);
     if (status != HAL_OK)
     {
         return (uint32_t)status;
     }
     HAL_Delay(10);
 
-    /* Set sample rate divider (1kHz / (1 + 9) = 100Hz) */
-    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_SMPLRT_DIV_REG, 0x09U);
+    /* Set sample rate divider (1kHz / (1 + 4) = 200Hz - optimal for balancing loop) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_SMPLRT_DIV, 0x04U);
     if (status != HAL_OK)
     {
         return (uint32_t)status;
     }
 
-    /* Configure DLPF (Digital Low Pass Filter) - Bandwidth 44Hz */
-    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_CONFIG_REG, 0x03U);
+    /* Configure Gyro/Temp DLPF - DLPF_CFG = 2 (Bandwidth 92Hz, Delay 3.9ms) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_CONFIG, 0x02U);
     if (status != HAL_OK)
     {
         return (uint32_t)status;
     }
 
-    /* Configure Gyro full scale range ±250 °/s */
-    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_GYRO_CONFIG_REG, 0x00U);
+    /* Configure Gyro full scale range: +/- 500 deg/s (FS_SEL = 1 -> 0x08) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_GYRO_CONFIG, 0x08U);
     if (status != HAL_OK)
     {
         return (uint32_t)status;
     }
 
-    /* Configure Accel full scale range ±2g */
-    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_ACCEL_CONFIG_REG, 0x00U);
+    /* Configure Accel full scale range: +/- 2g (AFS_SEL = 0 -> 0x00) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_ACCEL_CONFIG, 0x00U);
+    if (status != HAL_OK)
+    {
+        return (uint32_t)status;
+    }
+
+    /* Configure Accel DLPF - A_DLPF_CFG = 2 (Bandwidth 92Hz, Delay 3.8ms, ODR 1kHz) */
+    status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_ACCEL_CONFIG_2, 0x02U);
     if (status != HAL_OK)
     {
         return (uint32_t)status;
