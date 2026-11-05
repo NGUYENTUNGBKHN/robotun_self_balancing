@@ -2,10 +2,12 @@
 ****************************************************************************************************************
  * @file       pid.h
  * @brief      Discrete PID controller implementation for self-balancing robot
- * @date       2026/11/04
+ * @date       2026/11/05
  * @author     [Gentantun] (nguyenthanhtung8196@gmail.com)
- * @details    Provides vertical balancing PID (angle + angular velocity) and
- *             cascaded velocity/position PID control loops.
+ * @details    Provides 3-stage cascaded control architecture:
+ *               1. Position Loop:  Position error  -> Target velocity (RPM)
+ *               2. Velocity Loop:  Velocity error  -> Target tilt offset (deg)
+ *               3. Balance Loop:   Tilt + Gyro Y   -> Motor PWM duty (-1000..+1000)
  * @copyright  Copyright (c) 2026 RoboTun
 ****************************************************************************************************************
 */
@@ -96,25 +98,35 @@ float PID_Update(pid_controller_t *pid, float measurement, float dt);
  * @param  target_angle: Target balancing angle in degrees (mechanical zero balance point)
  * @param  gyro_rate: Angular velocity from gyro (e.g. deg/s)
  * @param  dt: Sampling period in seconds
- * @return Computed motor command
+ * @return Computed motor command (-1000 to +1000)
  */
 float PID_BalanceUpdate(pid_controller_t *pid, float angle, float target_angle, 
                         float gyro_rate, float dt);
 
 /**
- * @brief  Velocity/Position PI loop for wheel encoder feedback
+ * @brief  Velocity PI loop for wheel encoder speed feedback
  * @param  pid: Pointer to velocity pid_controller_t
- * @param  current_speed: Measured wheel speed (e.g., in RPM or ticks/s)
- * @param  target_speed: Desired wheel speed
+ * @param  current_speed: Measured wheel speed (in RPM)
+ * @param  target_speed: Desired wheel speed (from position loop or manual command)
  * @param  dt: Sampling period in seconds
- * @return Angle adjustment setpoint (added to target balance angle)
+ * @return Tilt angle adjustment setpoint in degrees (added to target balance angle)
  */
 float PID_VelocityUpdate(pid_controller_t *pid, float current_speed, 
                          float target_speed, float dt);
+
+/**
+ * @brief  Position PID loop for wheel distance/angle feedback (outer loop)
+ * @param  pid: Pointer to position pid_controller_t
+ * @param  current_position: Measured wheel position (e.g. degrees or ticks)
+ * @param  target_position: Desired wheel position
+ * @param  dt: Sampling period in seconds
+ * @return Desired velocity in RPM (fed into PID_VelocityUpdate)
+ */
+float PID_PositionUpdate(pid_controller_t *pid, float current_position, 
+                         float target_position, float dt);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _PID_H_ */
-

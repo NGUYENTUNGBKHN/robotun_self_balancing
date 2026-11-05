@@ -2,14 +2,16 @@
 ****************************************************************************************************************
  * @file       main.c
  * @brief      Application entry point for STM32F103xB (Cortex-M3) with Azure RTOS ThreadX
- * @date       2026/10/25
+ * @date       2026/11/05
  * @author     [Gentantun] (nguyenthanhtung8196@gmail.com)
  * @details    Initialises hardware (72 MHz HSE + PLL), user LED on PC13, debug UART on PA9,
- *             stepper motor driver on TIM3 CH1 / PB5, and enters the ThreadX kernel.
+ *             dual DC motor driver (TIM2 CH1-CH4), dual quadrature encoders (PB0/PB1 and PB10/PB11),
+ *             MPU6500 IMU, and enters the ThreadX kernel.
  *             Two threads are created:
- *               - thread_0: primary application & stepper motor actuation loop
- *               - thread_1: background housekeeping tasks
- * @ref        stm32f7/Application/main.c (original template)
+ *               - thread_0: telemetry display and system status
+ *               - thread_1: background housekeeping tasks (LED indicator)
+ *             Balancing loop runs in TIM4 interrupt at 200Hz with 3-stage cascade:
+ *               Position Loop -> Velocity Loop -> Balance Loop.
  * @copyright  Copyright (c) 2026 RoboTun
 ****************************************************************************************************************
 */
@@ -53,10 +55,13 @@ static MPU6500_driver_t *mpu = NULL;
 static imu_sensor_t      imu;
 static TIM_HandleTypeDef htim4;
 
-/* PID controllers */
+/* PID controllers: 3-stage cascade (Position -> Velocity -> Balance) */
 static pid_controller_t pid_balance;
 static pid_controller_t pid_velocity;
-static volatile int16_t g_motor_output = 0;
+static pid_controller_t pid_position;
+
+static volatile int16_t g_motor_output    = 0;
+static float            g_target_position = 0.0f;   /* Target wheel position in degrees (0 = lock position) */
 
 /***************************************************************************************************************
 **                                         INTERNAL FUNCTION PROTOTYPES
@@ -106,14 +111,14 @@ static void Robot_Timer4_Init(void)
  */
 static void Robot_Setup(void)
 {
-    /* 1. Initialize Motor Driver first (PA0, PA1 - TIM2 PWM) */
+    /* 1. Initialize Dual Motor Driver (Left: PA0/PA1, Right: PA2/PA3 - TIM2 PWM) */
     Motor_Init();
     Motor_Stop();
-    TRACE_INFO("Motor driver (PA0, PA1) initialized.\n");
+    TRACE_INFO("Dual Motor driver initialized.\n");
 
-    /* 2. Initialize Encoder on PB0 & PB1 */
+    /* 2. Initialize Dual Encoders (Left: PB0/PB1, Right: PB10/PB11) */
     Encoder_Init();
-    TRACE_INFO("Encoder (PB0, PB1) initialized.\n");
+    TRACE_INFO("Dual Encoders (Left PB0/PB1, Right PB10/PB11) initialized.\n");
 
     /* 3. Initialize MPU6500 */
     TRACE_INFO("Initializing MPU6500...\n");
@@ -140,11 +145,13 @@ static void Robot_Setup(void)
     TRACE_INFO("IMU Calibration done. Ready!\n");
 
     /* 6. Initialize PID controllers
-     * Balance PD: Kp=30.0f, Ki=0.0f, Kd=1.2f, Limits: [-1000, 1000]
-     * Velocity PI: Kp=0.2f, Ki=0.02f, Kd=0.0f, Tilt adjustment limits: [-5.0 deg, +5.0 deg]
+     * Balance PD:  Kp=30.0f, Ki=0.0f, Kd=1.2f, Limits: [-1000, 1000]
+     * Velocity PI: Kp=0.2f, Ki=0.02f, Kd=0.0f, Tilt limits: [-5.0 deg, +5.0 deg]
+     * Position PD: Kp=0.05f, Ki=0.0f, Kd=0.001f, Speed limits: [-60.0 RPM, +60.0 RPM]
      */
     PID_Init(&pid_balance, 30.0f, 0.0f, 1.2f, 0.0f, -1000.0f, 1000.0f);
     PID_Init(&pid_velocity, 0.2f, 0.02f, 0.0f, 5.0f, -5.0f, 5.0f);
+    PID_Init(&pid_position, 0.05f, 0.0f, 0.001f, 10.0f, -60.0f, 60.0f);
 
     /* 7. Initialize TIM4 for 200Hz control loop */
     Robot_Timer4_Init();
@@ -177,18 +184,29 @@ void TIM4_IRQHandler(void)
                     Motor_Stop();
                     PID_Reset(&pid_balance);
                     PID_Reset(&pid_velocity);
+                    PID_Reset(&pid_position);
                     g_motor_output = 0;
                 }
                 else
                 {
-                    /* 1. Velocity loop: compute target tilt offset angle */
+                    /* Compute average wheel position (degrees) and RPM from both wheels */
+                    float avg_pos = (Encoder_Left_GetAngleDeg() + Encoder_Right_GetAngleDeg()) * 0.5f;
+                    float avg_rpm = (Encoder_Left_GetRPM() + Encoder_Right_GetRPM()) * 0.5f;
+
+                    /* 1. Position loop: compute target speed (RPM) from position error */
+                    float target_rpm = PID_PositionUpdate(&pid_position, 
+                                                          avg_pos, 
+                                                          g_target_position, 
+                                                          CONTROL_LOOP_DT_SEC);
+
+                    /* 2. Velocity loop: compute target tilt offset angle */
                     float target_angle = PID_VelocityUpdate(&pid_velocity, 
-                                                            Encoder_GetRPM(), 
-                                                            0.0f, 
+                                                            avg_rpm, 
+                                                            target_rpm, 
                                                             CONTROL_LOOP_DT_SEC);
                     target_angle += MECHANICAL_ZERO_ANGLE;
 
-                    /* 2. Balance loop: compute motor PWM command using direct gyro rate (imu.gy) */
+                    /* 3. Balance loop: compute motor PWM command using direct gyro rate (imu.gy) */
                     float output = PID_BalanceUpdate(&pid_balance, 
                                                      imu.kalman_pitch, 
                                                      target_angle, 
@@ -196,7 +214,7 @@ void TIM4_IRQHandler(void)
                                                      CONTROL_LOOP_DT_SEC);
 
                     g_motor_output = (int16_t)output;
-                    Motor_SetSpeed(g_motor_output);
+                    Motor_SetSpeed(g_motor_output, g_motor_output);
                 }
             }
         }
@@ -253,8 +271,6 @@ int main(void)
     /* Infinite loop fallback */
     while (1)
     {
-        // toggle_led();
-        // HAL_Delay(500U);
     }
 }
 
@@ -287,7 +303,7 @@ void tx_application_define(void *first_unused_memory)
 }
 
 /**
- * @brief  Thread 0 body — primary application & stepper actuation logic.
+ * @brief  Thread 0 body — primary application telemetry and monitoring loop.
  * @param  thread_input  Thread parameter.
  */
 static void thread_0_entry(ULONG thread_input)
@@ -297,8 +313,6 @@ static void thread_0_entry(ULONG thread_input)
     /* Initialize IMU, calibrate and start 200Hz balancing timer */
     Robot_Setup();
 
-    // Motor_SetSpeed(1000);
-
     while (1)
     {
         /* 1. Robot pitch attitude (Kalman Filter) */
@@ -307,17 +321,18 @@ static void thread_0_entry(ULONG thread_input)
         int32_t k_frac = (int32_t)((k_pitch < 0 ? -k_pitch : k_pitch) * 100.0f) % 100;
         const char *k_sign = (k_pitch < 0 && k_int == 0) ? "-" : "";
 
-        /* 2. Wheel rotation angle from encoder */
-        float enc_deg = Encoder_GetAngleDeg();
-        int32_t enc_deg_int  = (int32_t)enc_deg;
-        int32_t enc_deg_frac = (int32_t)((enc_deg < 0 ? -enc_deg : enc_deg) * 100.0f) % 100;
-        const char *enc_sign = (enc_deg < 0 && enc_deg_int == 0) ? "-" : "";
+        /* 2. Average wheel position in degrees */
+        float avg_pos = (Encoder_Left_GetAngleDeg() + Encoder_Right_GetAngleDeg()) * 0.5f;
+        int32_t pos_int  = (int32_t)avg_pos;
+        int32_t pos_frac = (int32_t)((avg_pos < 0 ? -avg_pos : avg_pos) * 100.0f) % 100;
+        const char *pos_sign = (avg_pos < 0 && pos_int == 0) ? "-" : "";
 
-        /* Output robot pitch, wheel angle, tick counts, RPM, and motor command */
-        TRACE_INFO("Pitch: %s%ld.%02ld deg | Wheel: %s%ld.%02ld deg | RPM: %ld | Motor: %d\n", 
+        /* Output pitch, avg position, Left/Right RPMs, and motor command */
+        TRACE_INFO("Pitch: %s%ld.%02ld | Pos: %s%ld.%02ld deg | L_RPM: %ld | R_RPM: %ld | Out: %d\n", 
                    k_sign, (long)k_int, (long)k_frac, 
-                   enc_sign, (long)enc_deg_int, (long)enc_deg_frac,
-                   (long)Encoder_GetRPM(), g_motor_output);
+                   pos_sign, (long)pos_int, (long)pos_frac,
+                   (long)Encoder_Left_GetRPM(), (long)Encoder_Right_GetRPM(),
+                   g_motor_output);
 
         tx_thread_sleep(10U);
     }

@@ -2,9 +2,10 @@
 ****************************************************************************************************************
  * @file       pid.c
  * @brief      Discrete PID controller implementation for self-balancing robot
- * @date       2026/11/04
+ * @date       2026/11/05
  * @author     [Gentantun] (nguyenthanhtung8196@gmail.com)
- * @details    Implements standard PID, direct gyro rate balance PD, and velocity PI loop
+ * @details    Implements standard PID, direct gyro rate balance PD, velocity PI loop,
+ *             and position PID loop
  * @copyright  Copyright (c) 2026 RoboTun
 ****************************************************************************************************************
 */
@@ -162,7 +163,7 @@ float PID_BalanceUpdate(pid_controller_t *pid, float angle, float target_angle,
 }
 
 /**
- * @brief  Velocity/Position PI loop for wheel encoder feedback
+ * @brief  Velocity PI loop for wheel encoder feedback
  */
 float PID_VelocityUpdate(pid_controller_t *pid, float current_speed, 
                          float target_speed, float dt)
@@ -178,15 +179,22 @@ float PID_VelocityUpdate(pid_controller_t *pid, float current_speed,
     /* Proportional term */
     float p_out = pid->Kp * pid->error;
 
-    /* Integral term (accumulates position error over time) */
-    pid->integral += pid->Ki * pid->error * dt;
-    if (pid->integral > pid->integral_limit)
+    /* Integral term with anti-windup */
+    if (pid->Ki != 0.0f)
     {
-        pid->integral = pid->integral_limit;
+        pid->integral += pid->Ki * pid->error * dt;
+        if (pid->integral > pid->integral_limit)
+        {
+            pid->integral = pid->integral_limit;
+        }
+        else if (pid->integral < -pid->integral_limit)
+        {
+            pid->integral = -pid->integral_limit;
+        }
     }
-    else if (pid->integral < -pid->integral_limit)
+    else
     {
-        pid->integral = -pid->integral_limit;
+        pid->integral = 0.0f;
     }
     float i_out = pid->integral;
 
@@ -206,3 +214,60 @@ float PID_VelocityUpdate(pid_controller_t *pid, float current_speed,
     return pid->output;
 }
 
+/**
+ * @brief  Position PID loop for wheel distance/angle feedback (outer loop)
+ */
+float PID_PositionUpdate(pid_controller_t *pid, float current_position, 
+                         float target_position, float dt)
+{
+    if (pid == NULL || dt <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    pid->target = target_position;
+    pid->error  = target_position - current_position;
+
+    /* Proportional term */
+    float p_out = pid->Kp * pid->error;
+
+    /* Integral term with anti-windup */
+    if (pid->Ki != 0.0f)
+    {
+        pid->integral += pid->Ki * pid->error * dt;
+        if (pid->integral > pid->integral_limit)
+        {
+            pid->integral = pid->integral_limit;
+        }
+        else if (pid->integral < -pid->integral_limit)
+        {
+            pid->integral = -pid->integral_limit;
+        }
+    }
+    else
+    {
+        pid->integral = 0.0f;
+    }
+    float i_out = pid->integral;
+
+    /* Derivative term */
+    float derivative = (pid->error - pid->prev_error) / dt;
+    float d_out = pid->Kd * derivative;
+
+    /* Output: target speed setpoint (in RPM) */
+    pid->output = p_out + i_out + d_out;
+
+    /* Clamp target speed to reasonable range (e.g. +/- 60 RPM) */
+    if (pid->output > pid->out_max)
+    {
+        pid->output = pid->out_max;
+    }
+    else if (pid->output < pid->out_min)
+    {
+        pid->output = pid->out_min;
+    }
+
+    pid->prev_error = pid->error;
+
+    return pid->output;
+}

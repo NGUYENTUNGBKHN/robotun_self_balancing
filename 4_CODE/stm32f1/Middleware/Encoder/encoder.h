@@ -1,11 +1,13 @@
 /*
 ****************************************************************************************************************
  * @file       encoder.h
- * @brief      Incremental quadrature encoder driver for STM32F1 (PB0, PB1)
- * @date       2026/11/03
+ * @brief      Dual incremental quadrature encoder driver for STM32F1
+ *             - Left Encoder:  PB0 (ChA / EXTI0),  PB1 (ChB / EXTI1)
+ *             - Right Encoder: PB10 (ChA / EXTI10), PB11 (ChB / EXTI11)
+ * @date       2026/11/05
  * @author     [Gentantun] (nguyenthanhtung8196@gmail.com)
- * @details    Reads 2-phase quadrature encoder on PB0 (Channel A) and PB1 (Channel B)
- *             using GPIO EXTI interrupts with 4x resolution (44 counts/rev for 11 PPR).
+ * @details    Reads 2-phase quadrature encoders for both Left and Right wheels
+ *             using GPIO EXTI interrupts with 4x state-machine decoding.
  * @copyright  Copyright (c) 2026 RoboTun
 ****************************************************************************************************************
 */
@@ -27,19 +29,23 @@ extern "C"
 /***************************************************************************************************************
 **                                            MACROS & CONSTANTS
 ***************************************************************************************************************/
-/* Encoder hardware mapping */
-#define ENCODER_PORT                GPIOB
-#define ENCODER_PIN_A               GPIO_PIN_0
-#define ENCODER_PIN_B               GPIO_PIN_1
+/* Left Encoder hardware mapping */
+#define ENCODER_LEFT_PORT               GPIOB
+#define ENCODER_LEFT_PIN_A              GPIO_PIN_0
+#define ENCODER_LEFT_PIN_B              GPIO_PIN_1
+#define ENCODER_LEFT_EXTI_IRQN_A        EXTI0_IRQn
+#define ENCODER_LEFT_EXTI_IRQN_B        EXTI1_IRQn
 
-#define ENCODER_EXTI_IRQN_A         EXTI0_IRQn
-#define ENCODER_EXTI_IRQN_B         EXTI1_IRQn
+/* Right Encoder hardware mapping */
+#define ENCODER_RIGHT_PORT              GPIOB
+#define ENCODER_RIGHT_PIN_A             GPIO_PIN_10
+#define ENCODER_RIGHT_PIN_B             GPIO_PIN_11
+#define ENCODER_RIGHT_EXTI_IRQN         EXTI15_10_IRQn
 
 /* Resolution configuration:
- * Measured empirically on the wheel output shaft: 2552 counts per revolution (4x decoding)
- * (Corresponds to ~0.141 degrees per tick resolution)
+ * Measured empirically on the wheel output shaft: 2550 counts per revolution (4x decoding)
  */
-#define ENCODER_COUNTS_PER_REV      (2500.0f)
+#define ENCODER_COUNTS_PER_REV          (2550.0f)
 
 /***************************************************************************************************************
 **                                            TYPE DEFINITIONS
@@ -62,59 +68,125 @@ typedef struct
 ***************************************************************************************************************/
 
 /**
- * @brief  Initialise GPIO PB0, PB1 and EXTI interrupts for Encoder
+ * @brief  Initialise both Left (PB0, PB1) and Right (PB10, PB11) Encoders
  */
 void Encoder_Init(void);
 
 /**
- * @brief  Reset encoder position counters
+ * @brief  Initialise Left Encoder GPIO and EXTI interrupts (PB0, PB1)
+ */
+void Encoder_Left_Init(void);
+
+/**
+ * @brief  Initialise Right Encoder GPIO and EXTI interrupts (PB10, PB11)
+ */
+void Encoder_Right_Init(void);
+
+/**
+ * @brief  Reset both encoder position counters
  */
 void Encoder_Reset(void);
 
 /**
- * @brief  Get current raw pulse count
- * @return Total signed pulse count
+ * @brief  Reset Left encoder position counters
  */
-int64_t Encoder_GetCount(void);
+void Encoder_Left_Reset(void);
 
 /**
- * @brief  Get current wheel angle in degrees
- * @return Wheel angle in degrees
+ * @brief  Reset Right encoder position counters
  */
-float Encoder_GetAngleDeg(void);
+void Encoder_Right_Reset(void);
 
 /**
- * @brief  Get current wheel angle in radians
- * @return Wheel angle in radians
- */
-float Encoder_GetAngleRad(void);
-
-/**
- * @brief  Calculate speed and position. Call periodically (e.g. in 200Hz or 100Hz loop)
- * @param  dt: Time elapsed since last update in seconds (e.g. 0.005f for 200Hz)
+ * @brief  Calculate speed and position for both encoders (call periodically, e.g. 200Hz)
+ * @param  dt: Time elapsed since last update in seconds
  */
 void Encoder_Update(float dt);
 
 /**
- * @brief  Get calculated speed in RPM
+ * @brief  Calculate speed and position for Left encoder
+ * @param  dt: Time elapsed in seconds
+ */
+void Encoder_Left_Update(float dt);
+
+/**
+ * @brief  Calculate speed and position for Right encoder
+ * @param  dt: Time elapsed in seconds
+ */
+void Encoder_Right_Update(float dt);
+
+/**
+ * @brief  Get Left encoder raw pulse count
+ * @return Signed pulse count
+ */
+int64_t Encoder_Left_GetCount(void);
+
+/**
+ * @brief  Get Right encoder raw pulse count
+ * @return Signed pulse count
+ */
+int64_t Encoder_Right_GetCount(void);
+
+/**
+ * @brief  Get Left wheel angle in degrees
+ * @return Wheel angle in degrees
+ */
+float Encoder_Left_GetAngleDeg(void);
+
+/**
+ * @brief  Get Right wheel angle in degrees
+ * @return Wheel angle in degrees
+ */
+float Encoder_Right_GetAngleDeg(void);
+
+/**
+ * @brief  Get Left wheel angle in radians
+ * @return Wheel angle in radians
+ */
+float Encoder_Left_GetAngleRad(void);
+
+/**
+ * @brief  Get Right wheel angle in radians
+ * @return Wheel angle in radians
+ */
+float Encoder_Right_GetAngleRad(void);
+
+/**
+ * @brief  Get Left wheel speed in RPM
  * @return Speed in RPM
  */
-float Encoder_GetRPM(void);
+float Encoder_Left_GetRPM(void);
 
 /**
- * @brief  Get calculated angular velocity in rad/s
+ * @brief  Get Right wheel speed in RPM
+ * @return Speed in RPM
+ */
+float Encoder_Right_GetRPM(void);
+
+/**
+ * @brief  Get Left wheel angular velocity in rad/s
  * @return Angular velocity in rad/s
  */
-float Encoder_GetRadPerSec(void);
+float Encoder_Left_GetRadPerSec(void);
 
 /**
- * @brief  Encoder EXTI interrupt callback (called from EXTI0 & EXTI1 handlers)
+ * @brief  Get Right wheel angular velocity in rad/s
+ * @return Angular velocity in rad/s
  */
-void Encoder_EXTI_Callback(void);
+float Encoder_Right_GetRadPerSec(void);
+
+/**
+ * @brief  Left encoder EXTI callback
+ */
+void Encoder_Left_EXTI_Callback(void);
+
+/**
+ * @brief  Right encoder EXTI callback
+ */
+void Encoder_Right_EXTI_Callback(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _ENCODER_H_ */
-
