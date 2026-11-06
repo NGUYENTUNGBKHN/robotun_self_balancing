@@ -180,12 +180,12 @@ typedef struct MPU6500_DRIVER_S MPU6500_driver_t;
 struct MPU6500_DRIVER_S
 {
     void *handle;
-    uint32_t (*init)(MPU6500_driver_t *self);
-    uint32_t (*writeReg)(MPU6500_driver_t *self, uint8_t reg, uint8_t data);
-    uint32_t (*readReg)(MPU6500_driver_t *self, uint8_t reg, uint8_t *data);
-    uint32_t (*readRegs)(MPU6500_driver_t *self, uint8_t reg, uint8_t *data, uint16_t len);
-    uint32_t (*who_am_i)(MPU6500_driver_t *self, uint8_t *id);
-    uint32_t (*readRawData)(MPU6500_driver_t *self, int16_t *accel, int16_t *gyro);
+    code_status_t (*init)(MPU6500_driver_t *self);
+    code_status_t (*writeReg)(MPU6500_driver_t *self, uint8_t reg, uint8_t data);
+    code_status_t (*readReg)(MPU6500_driver_t *self, uint8_t reg, uint8_t *data);
+    code_status_t (*readRegs)(MPU6500_driver_t *self, uint8_t reg, uint8_t *data, uint16_t len);
+    code_status_t (*who_am_i)(MPU6500_driver_t *self, uint8_t *id);
+    code_status_t (*readRawData)(MPU6500_driver_t *self, int16_t *accel, int16_t *gyro);
 };
 
 /***************************************************************************************************************

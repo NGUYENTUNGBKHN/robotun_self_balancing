@@ -13,10 +13,9 @@
 **                                                   INCLUDES
 ***************************************************************************************************************/
 #include <stdint.h>
-#include <string.h>
 #include "common.h"
-#include "MPU6500_driver.h"
 #include "stm32f1xx_hal.h"
+#include "MPU6500_driver.h"
 
 /***************************************************************************************************************
 **                                         EXTERNAL FUNCTION PROTOTYPES
@@ -43,42 +42,50 @@ static I2C_HandleTypeDef hi2c1;
 /***************************************************************************************************************
 **                                         INTERNAL FUNCTION PROTOTYPES
 ***************************************************************************************************************/
-static void MPU6500_I2C_MspInit(I2C_HandleTypeDef *hi2c);
-static code_status_t MPU6500_I2C_Init(void);
+static void MPU6500_I2C_Config_Pin();
+static code_status_t MPU6500_I2C_Init(I2C_HandleTypeDef *hi2c);
 
 /***************************************************************************************************************
 **                                             FUNCTION DEFINITIONS
 ***************************************************************************************************************/
 
-/**
- * @brief  Initialize I2C1 peripheral (PB6=SCL, PB7=SDA)
- * @note   Standard mode @ 100kHz
- */
-static code_status_t MPU6500_I2C_Init(void)
+/*
+****************************************************************************************************************
+ *                  MPU6500_I2C_Init
+ * @brief      Initialize I2C1 peripheral (PB6=SCL, PB7=SDA)
+ * @param      hi2c            :  I2C handle
+ * @return     code_status_t
+ * 
+****************************************************************************************************************
+*/
+static code_status_t MPU6500_I2C_Init(I2C_HandleTypeDef *hi2c)
 {
-    hi2c1.Instance             = MPU6500_INSTANCE;
-    hi2c1.Init.ClockSpeed      = MPU6500_CLOCK_SPEED;
-    hi2c1.Init.DutyCycle       = MPU6500_DUTY_CYCLE;
-    hi2c1.Init.OwnAddress1     = 0x00U;
-    hi2c1.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
-    hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c1.Init.OwnAddress2     = 0x00U;
-    hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c1.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
+    hi2c->Instance             = MPU6500_INSTANCE;          /* Instance */
+    hi2c->Init.ClockSpeed      = MPU6500_CLOCK_SPEED;       /* Clock Speed 400kHz */
+    hi2c->Init.DutyCycle       = MPU6500_DUTY_CYCLE;        /* Duty cycle divide 2 */
+    hi2c->Init.OwnAddress1     = 0x00U;
+    hi2c->Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;   /* Mode 7-bit */
+    hi2c->Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;   /* Dual address disable */
+    hi2c->Init.OwnAddress2     = 0x00U;
+    hi2c->Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;   /* Generalcall disable */
+    hi2c->Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;     /* nostrethc disable */
 
-    if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+    /* Initialize I2C1  */
+    if (HAL_I2C_Init(&hi2c) != HAL_OK)
     {
-        TRACE_INFO("Error\n");
         return ACE_ERROR;
     }
     return ACE_SUCCESS;
 }
 
-/**
- * @brief  I2C MSP Initialization (GPIO, Clock, NVIC)
- * @param  hi2c: I2C handle
- */
-static void MPU6500_I2C_MspInit(I2C_HandleTypeDef *hi2c)
+/*
+****************************************************************************************************************
+ *              MPU6500_I2C_Config_Pin
+ * @brief      I2C MSP Initialization (GPIO, Clock, NVIC)
+ *
+****************************************************************************************************************
+*/
+static void MPU6500_I2C_Config_Pin()
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -109,91 +116,134 @@ static void MPU6500_I2C_MspInit(I2C_HandleTypeDef *hi2c)
     }
 }
 
-/**
- * @brief  Write a single register on MPU6500
- * @param  self: Driver instance
- * @param  reg: Register address
- * @param  data: Data to write
- * @return HAL status
- */
-uint32_t MPU6500_WriteReg(MPU6500_driver_t *self, uint8_t reg, uint8_t data)
+/*
+****************************************************************************************************************
+ *                  MPU6500_WriteReg
+ * @brief               Write a single register on MPU6500
+ * @param      self     : Driver instance
+ * @param      reg      : Register address
+ * @param      data     : Data to write
+ * @return     code_status_t
+ *             ACE_ERROR : Error
+ *             ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_WriteReg(MPU6500_driver_t *self, uint8_t reg, uint8_t data)
 {
     uint8_t buf[2] = { reg, data };
-    HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(&hi2c1, MPU6500_I2C_ADDR, buf, 2, MPU6500_I2C_TIMEOUT_MS);
-    return (uint32_t)status;
+
+    /* I2C transmit data */
+    HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(self->handle, MPU6500_I2C_ADDR, 
+                                                buf, 2, MPU6500_I2C_TIMEOUT_MS);
+    if (status != HAL_OK)
+    {
+        /* Return error */
+        return ACE_ERROR;
+    }
+    /* Return success */
+    return ACE_SUCCESS;
 }
 
-/**
- * @brief  Read a single register from MPU6500
- * @param  self: Driver instance
- * @param  reg: Register address to read from
- * @param  data: Pointer to store read data
- * @return HAL status
- */
-uint32_t MPU6500_ReadReg(MPU6500_driver_t *self, uint8_t reg, uint8_t *data)
+/*
+****************************************************************************************************************
+ *                  MPU6500_ReadReg
+ * @brief           Read a single register from MPU6500
+ * @param      self    : Driver instance
+ * @param      reg     : Register address to read from
+ * @param      data    : Pointer to store read data
+ * @return     code_status_t
+ *              ACE_ERROR : Error    
+ *              ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_ReadReg(MPU6500_driver_t *self, uint8_t reg, uint8_t *data)
+{
+    HAL_StatusTypeDef status;
+
+    /* I2C Transmit data */
+    status = HAL_I2C_Master_Transmit(self->handle, MPU6500_I2C_ADDR, &reg, 1, MPU6500_I2C_TIMEOUT_MS);
+    if (status != HAL_OK)
+    {
+        return ACE_ERROR;
+    }
+
+    /* I2C Receive data */
+    status = HAL_I2C_Master_Receive(self->handle, MPU6500_I2C_ADDR, data, 1, MPU6500_I2C_TIMEOUT_MS);
+    if (status != HAL_OK)
+    {
+        return ACE_ERROR;
+    }
+    return ACE_SUCCESS;
+}
+
+/*
+****************************************************************************************************************
+ *                      MPU6500_ReadRegs
+ * @brief               Read multiple registers from MPU6500
+ * @param      self    : Driver instance
+ * @param      reg     : Starting register address
+ * @param      data    : Buffer to store read data
+ * @param      len     : Number of bytes to read
+ * @return     code_status_t
+ *              ACE_ERROR : Error    
+ *              ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_ReadRegs(MPU6500_driver_t *self, uint8_t reg, uint8_t *data, uint16_t len)
 {
     HAL_StatusTypeDef status;
 
     /* Send register address */
-    status = HAL_I2C_Master_Transmit(&hi2c1, MPU6500_I2C_ADDR, &reg, 1, MPU6500_I2C_TIMEOUT_MS);
+    status = HAL_I2C_Master_Transmit(self->handle, MPU6500_I2C_ADDR, &reg, 1, MPU6500_I2C_TIMEOUT_MS);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Read data */
-    status = HAL_I2C_Master_Receive(&hi2c1, MPU6500_I2C_ADDR, data, 1, MPU6500_I2C_TIMEOUT_MS);
-    return (uint32_t)status;
-}
-
-/**
- * @brief  Read multiple registers from MPU6500
- * @param  self: Driver instance
- * @param  reg: Starting register address
- * @param  data: Buffer to store read data
- * @param  len: Number of bytes to read
- * @return HAL status
- */
-uint32_t MPU6500_ReadRegs(MPU6500_driver_t *self, uint8_t reg, uint8_t *data, uint16_t len)
-{
-    HAL_StatusTypeDef status;
-
-    /* Send register address */
-    status = HAL_I2C_Master_Transmit(&hi2c1, MPU6500_I2C_ADDR, &reg, 1, MPU6500_I2C_TIMEOUT_MS);
+    status = HAL_I2C_Master_Receive(self->handle, MPU6500_I2C_ADDR, data, len, MPU6500_I2C_TIMEOUT_MS);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
-
-    /* Read data */
-    status = HAL_I2C_Master_Receive(&hi2c1, MPU6500_I2C_ADDR, data, len, MPU6500_I2C_TIMEOUT_MS);
-    return (uint32_t)status;
+    return ACE_SUCCESS;
 }
 
-/**
- * @brief  Read WHO_AM_I register (should return 0x70 for MPU6500)
- * @param  self: Driver instance
- * @param  id: Pointer to store WHO_AM_I value
- * @return HAL status
- */
-uint32_t MPU6500_WhoAmI(MPU6500_driver_t *self, uint8_t *id)
+/*
+****************************************************************************************************************
+ *                      MPU6500_WhoAmI
+ * @brief               Read WHO_AM_I register (should return 0x70 for MPU6500)
+ * @param      self     : Driver instance
+ * @param      id       : Pointer to store WHO_AM_I value
+ * @return     code_status_t
+ *              ACE_ERROR : Error     
+ *              ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_WhoAmI(MPU6500_driver_t *self, uint8_t *id)
 {
+    /* Read WHO_AM_I register */
     return MPU6500_ReadReg(self, MPU6500_WHO_AM_I_REG, id);
 }
 
-/**
- * @brief  Initialize MPU6500 sensor
- * @param  self: Driver instance
- * @return HAL status
- */
-uint32_t MPU6500_Init(MPU6500_driver_t *self)
+/*
+****************************************************************************************************************
+ *                      MPU6500_Init
+ * @brief               Initialize MPU6500 sensor
+ * @param      self     : Driver instance
+ * @return     code_status_t
+ *              ACE_ERROR : Error    
+ *              ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_Init(MPU6500_driver_t *self)
 {
     uint8_t who_am_i = 0;
     HAL_StatusTypeDef status;
 
     /* Initialize I2C peripheral and GPIO */
-    MPU6500_I2C_MspInit(&hi2c1);
-    MPU6500_I2C_Init();
+    MPU6500_I2C_Config_Pin();
+    MPU6500_I2C_Init(self->handle);
 
     /* Wait for sensor to power up */
     HAL_Delay(100);
@@ -202,14 +252,14 @@ uint32_t MPU6500_Init(MPU6500_driver_t *self)
     status = (HAL_StatusTypeDef)MPU6500_WhoAmI(self, &who_am_i);
     if (status != HAL_OK || who_am_i != MPU6500_WHO_AM_I_VAL)
     {
-        return (uint32_t)HAL_ERROR;
+        return ACE_ERROR;
     }
 
     /* Reset device to ensure clean state */
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_PWR_MGMT_1, 0x80U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
     HAL_Delay(100);
     
@@ -217,7 +267,7 @@ uint32_t MPU6500_Init(MPU6500_driver_t *self)
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_PWR_MGMT_1, 0x01U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
     HAL_Delay(10);
 
@@ -225,48 +275,53 @@ uint32_t MPU6500_Init(MPU6500_driver_t *self)
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_SMPLRT_DIV, 0x04U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Configure Gyro/Temp DLPF - DLPF_CFG = 2 (Bandwidth 92Hz, Delay 3.9ms) */
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_CONFIG, 0x02U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Configure Gyro full scale range: +/- 500 deg/s (FS_SEL = 1 -> 0x08) */
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_GYRO_CONFIG, 0x08U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Configure Accel full scale range: +/- 2g (AFS_SEL = 0 -> 0x00) */
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_ACCEL_CONFIG, 0x00U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Configure Accel DLPF - A_DLPF_CFG = 2 (Bandwidth 92Hz, Delay 3.8ms, ODR 1kHz) */
     status = (HAL_StatusTypeDef)MPU6500_WriteReg(self, MPU6500_ACCEL_CONFIG_2, 0x02U);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
-    return (uint32_t)HAL_OK;
+    return ACE_SUCCESS;
 }
 
-/**
- * @brief  Read raw accelerometer and gyroscope data
- * @param  self: Driver instance
- * @param  accel: Array of 3 int16_t for accel X,Y,Z
- * @param  gyro: Array of 3 int16_t for gyro X,Y,Z
- * @return HAL status
- */
-uint32_t MPU6500_ReadRawData(MPU6500_driver_t *self, int16_t *accel, int16_t *gyro)
+/*
+****************************************************************************************************************
+ *                          MPU6500_ReadRawData
+ * @brief                   Read raw accelerometer and gyroscope data
+ * @param      self     : Driver instance
+ * @param      accel    : Array of 3 int16_t for accel X,Y,Z
+ * @param      gyro     : Array of 3 int16_t for gyro X,Y,Z
+ * @return     code_status_t
+ *              ACE_ERROR : Error    
+ *              ACE_SUCCESS : Success
+****************************************************************************************************************
+*/
+code_status_t MPU6500_ReadRawData(MPU6500_driver_t *self, int16_t *accel, int16_t *gyro)
 {
     uint8_t buf[14];
     HAL_StatusTypeDef status;
@@ -275,7 +330,7 @@ uint32_t MPU6500_ReadRawData(MPU6500_driver_t *self, int16_t *accel, int16_t *gy
     status = (HAL_StatusTypeDef)MPU6500_ReadRegs(self, MPU6500_ACCEL_XOUT_H_REG, buf, 14);
     if (status != HAL_OK)
     {
-        return (uint32_t)status;
+        return ACE_ERROR;
     }
 
     /* Parse accelerometer data (big-endian) */
@@ -290,29 +345,30 @@ uint32_t MPU6500_ReadRawData(MPU6500_driver_t *self, int16_t *accel, int16_t *gy
     gyro[1] = (int16_t)((buf[10] << 8) | buf[11]);  /* GYRO_YOUT */
     gyro[2] = (int16_t)((buf[12] << 8) | buf[13]);  /* GYRO_ZOUT */
 
-    return (uint32_t)HAL_OK;
+    return ACE_SUCCESS;
 }
 
-/**
- * @brief  Create MPU6500 driver instance
- * @return Pointer to driver instance
- */
+/*
+****************************************************************************************************************
+ *                      MPU6500_driver_create
+ * @brief      Create MPU6500 driver instance
+ * @return     MPU6500_driver_t*
+****************************************************************************************************************
+*/
 MPU6500_driver_t *MPU6500_driver_create(void)
 {
     static MPU6500_driver_t driver;
 
-    TRACE_INFO("enter\n");
-    driver.handle = &hi2c1;
-    driver.init   = MPU6500_Init;
-    driver.writeReg = MPU6500_WriteReg;
-    driver.readReg  = MPU6500_ReadReg;
-    driver.who_am_i = MPU6500_WhoAmI;
-    driver.readRawData = MPU6500_ReadRawData;
+    driver.handle = &hi2c1;                     /* I2C1 handle  */
+    driver.init   = MPU6500_Init;               /* Initialize function */
+    driver.writeReg = MPU6500_WriteReg;         /* Write function */
+    driver.readReg  = MPU6500_ReadReg;          /* Read function */
+    driver.who_am_i = MPU6500_WhoAmI;           /* Read WHO_AM_I register */
+    driver.readRawData = MPU6500_ReadRawData;   /* Read raw data */
 
+    /* Return driver */
     return &driver;
 }
-
-
 
 /***************************************************************************************************************
 **                                                End of file
