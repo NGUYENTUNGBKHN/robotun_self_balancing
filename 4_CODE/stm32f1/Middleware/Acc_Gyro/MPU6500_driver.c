@@ -71,7 +71,7 @@ static code_status_t MPU6500_I2C_Init(I2C_HandleTypeDef *hi2c)
     hi2c->Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;     /* nostrethc disable */
 
     /* Initialize I2C1  */
-    if (HAL_I2C_Init(&hi2c) != HAL_OK)
+    if (HAL_I2C_Init(hi2c) != HAL_OK)
     {
         return ACE_ERROR;
     }

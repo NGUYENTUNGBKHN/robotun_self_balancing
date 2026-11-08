@@ -50,7 +50,7 @@ set(BOOT_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/boot.ld")
 
 target_link_options(boot PRIVATE
     -mcpu=cortex-m3 -mthumb -mabi=aapcs
-    -O3 -g3
+    -Os -g3
     --specs=nano.specs
     -Wl,--gc-sections
     -T${BOOT_LINKER_SCRIPT}

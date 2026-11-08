@@ -12,9 +12,10 @@
 /***************************************************************************************************************
 **                                                   INCLUDES
 ***************************************************************************************************************/
-#include "accelero_gyro.h"
 #include <math.h>
+#include "common.h"
 #include <string.h>
+#include "accelero_gyro.h"
 #include "stm32f1xx_hal.h"
 #include "tx_api.h"
 
@@ -228,7 +229,7 @@ void IMU_Calibrate(imu_sensor_t *imu, uint16_t sample_count)
 
     for (uint16_t i = 0; i < sample_count; i++)
     {
-        if (imu->driver->readRawData(imu->driver, raw_accel, raw_gyro) == HAL_OK)
+        if (imu->driver->readRawData(imu->driver, raw_accel, raw_gyro) == ACE_SUCCESS)
         {
             sum_ax += raw_accel[0];
             sum_ay += raw_accel[1];
@@ -269,7 +270,7 @@ void IMU_Update(imu_sensor_t *imu, float dt)
     int16_t raw_accel[3];
     int16_t raw_gyro[3];
 
-    if (imu->driver->readRawData(imu->driver, raw_accel, raw_gyro) != HAL_OK)
+    if (imu->driver->readRawData(imu->driver, raw_accel, raw_gyro) != ACE_SUCCESS)
     {
         return;
     }
