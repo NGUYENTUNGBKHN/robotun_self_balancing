@@ -129,7 +129,7 @@ static void Robot_Setup(void)
         Error_Handler();
     }
 
-    if (mpu->init(mpu) != HAL_OK)
+    if (mpu->init(mpu) != ACE_SUCCESS)
     {
         TRACE_INFO("MPU6500 init failed!\n");
         Error_Handler();
