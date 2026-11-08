@@ -4,9 +4,10 @@
 #  -  Add motor model
 
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import animation
 
-data = np.array([12, 15, 20, 25, 30])
-print("Original Array : ", data)
+from numpy import sin, cos, pi
 
 
 
