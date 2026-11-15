@@ -19,11 +19,26 @@
 #include "debug_uart.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
+#include "MPU6500_driver.h"
+#include "MPU6050_driver.h"
 /***************************************************************************************************************
 **                                         INTERNAL FUNCTION PROTOTYPES
 ***************************************************************************************************************/
 static void SystemClock_Config(void);
 static void USB_Reset_DP(void);
+static void Timer4_Init(void);
+
+MPU6050_driver_t *mpu = NULL;
+typedef struct USB_PACKAGE_S
+{
+    uint8_t header;
+    uint8_t length;
+    int16_t accel[3];
+    int16_t gyro[3];
+    uint8_t end;
+}usb_package_t;
+
+usb_package_t imu_data;
 
 /***************************************************************************************************************
 **                                             FUNCTION DEFINITIONS
@@ -61,7 +76,11 @@ int boot_main(void)
     /* Debug UART initialize (USART1 PA9 @ 115200 baud) */
     debug_uart_init();
 
-    TRACE_INFO("STM32F1 Bootloader started\n");
+    
+
+    /* Initialize I2C MPU6050 */
+    mpu = MPU6050_driver_create();
+    mpu->init(mpu);
 
     /* Force USB re-enumeration on PC */
     USB_Reset_DP();
@@ -69,14 +88,36 @@ int boot_main(void)
     /* USB Device initialize */
     MX_USB_DEVICE_Init();
 
+    /* Initialize timer 4 */
+    Timer4_Init();
+
+    uint32_t last_tx_tick = 0;
+
+    TRACE_INFO("STM32F1 Bootloader started\n");
+
     while (1)
     {
-        /* Transmit only when USB is connected and configured by PC */
-        if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)
+        /* Read received bytes from USB RX Ring Buffer */
+        while (CDC_Available() > 0)
         {
-            CDC_Transmit_FS((uint8_t *)test, strlen(test));
+            int16_t ch = CDC_Read();
+            if (ch >= 0)
+            {
+                uint8_t c = (uint8_t)ch;
+                /* Echo received character back to PC */
+                CDC_Transmit_FS(&c, 1);
+            }
         }
-        HAL_Delay(1000);
+
+        /* Periodic message every 1 second */
+        // if ((HAL_GetTick() - last_tx_tick) >= 1000)
+        // {
+        //     last_tx_tick = HAL_GetTick();
+        //     if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)
+        //     {
+        //         CDC_Transmit_FS((uint8_t *)test, strlen(test));
+        //     }
+        // }
     }
 }
 
@@ -122,6 +163,53 @@ static void SystemClock_Config(void)
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
         Error_Handler();
+    }
+}
+static TIM_HandleTypeDef htim4;
+static void Timer4_Init(void)
+{
+    __HAL_RCC_TIM4_CLK_ENABLE();
+
+    htim4.Instance               = TIM4;
+    htim4.Init.Prescaler         = 72U - 1U;
+    htim4.Init.CounterMode       = TIM_COUNTERMODE_UP;
+    htim4.Init.Period            = 5000U - 1U;
+    htim4.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+
+    if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    /* Configure TIM4 interrupt priority and enable IRQ */
+    HAL_NVIC_SetPriority(TIM4_IRQn, 4, 0);
+    HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
+    /* Start TIM4 Base Interrupt */
+    HAL_TIM_Base_Start_IT(&htim4);
+}
+
+
+void TIM4_IRQHandler(void)
+{
+    if (__HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE) != RESET)
+    {
+        if (__HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_UPDATE) != RESET)
+        {
+            __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
+            if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)
+            {
+                mpu->readRawData(mpu, imu_data.accel, imu_data.gyro);
+
+                imu_data.header = 0xFC;
+                imu_data.length = 12;
+                imu_data.end = 0xFF;
+                CDC_Transmit_FS((uint8_t*)&imu_data, imu_data.length + 3);
+                // TRACE_INFO("acc = %x, %x, %x\n", raw_accel_gyro[0], raw_accel_gyro[1], raw_accel_gyro[2]);
+                // TRACE_INFO("gyro = %x, %x, %x\n", raw_accel_gyro[3], raw_accel_gyro[4], raw_accel_gyro[5]);
+            }
+        }
     }
 }
 

@@ -16,6 +16,9 @@ file(GLOB USB_TARGET_SRC   "${CMAKE_SOURCE_DIR}/Middleware/USB/Device/Target/*.c
 file(GLOB USB_CLASS_SRC    "${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Class/CDC/Src/*.c")
 file(GLOB USB_CORE_SRC     "${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Core/Src/*.c")
 
+#Middleware acceletor and gyroscope
+file(GLOB ACC_GYRO_SRC      "${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro/*.c")
+
 # Exclude boot_startup.s (lowercase) if any
 list(FILTER BOOT_ASM_s_SRC EXCLUDE REGEX "boot_startup\\.s$")
 
@@ -29,6 +32,7 @@ add_executable(boot
     ${USB_TARGET_SRC}
     ${USB_CLASS_SRC}
     ${USB_CORE_SRC}
+    ${ACC_GYRO_SRC}
 )
 
 # --------------------------------------------------------------------------
@@ -43,6 +47,7 @@ target_include_directories(boot PRIVATE
     ${CMAKE_SOURCE_DIR}/Middleware/USB/Device/Target
     ${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Class/CDC/Inc
     ${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Core/Inc
+    ${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro
 )
 
 # --------------------------------------------------------------------------
