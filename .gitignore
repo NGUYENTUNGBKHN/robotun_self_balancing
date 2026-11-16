@@ -1,4 +1,6 @@
 
+
+
 # 1_CAD
 
 
@@ -14,5 +16,5 @@
 **/_cmake_build
 
 **/doc
-
+**/build
 

@@ -12,7 +12,7 @@
  *               - thread_1: background housekeeping tasks (LED indicator)
  *             Balancing loop runs in TIM4 interrupt at 200Hz with 3-stage cascade:
  *               Position Loop -> Velocity Loop -> Balance Loop.
- * @copyright  Copyright (c) 2026 RoboTun
+ * @copyright  Copyright (c) 2026 RoboTunP
 ****************************************************************************************************************
 */
 /***************************************************************************************************************

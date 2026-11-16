@@ -1,0 +1,49 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../4_CODE/stm32f1"
+		},
+		{
+			"path": "../4_CODE/test/filter"
+		},
+		{
+			"path": "../4_CODE/Tool/Filter_sensor"
+		}
+	],
+	"settings": {
+		"doxdocgen.c.getterText": "Create a {name} object",
+		"doxdocgen.file.customTag": [
+			"@details    ",
+			"@ref        ",
+			"@copyright  Copyright (c) {year} RoboTun"
+		],
+		"doxdocgen.file.fileOrder": [
+			"file",
+			"brief",
+			"date",
+			"author",
+			"custom"
+		],
+		"doxdocgen.file.fileTemplate": "@file       {name}",
+		"doxdocgen.generic.authorName": "    [Gentantun]",
+		"doxdocgen.c.commentPrefix": " * ",
+		"doxdocgen.c.firstLine": "/*\n****************************************************************************************************************",
+		"doxdocgen.c.lastLine": "****************************************************************************************************************\n*/",
+		"doxdocgen.generic.briefTemplate": "@brief      {text}",
+		"doxdocgen.generic.dateFormat": "      YYYY/MM/DD",
+		"doxdocgen.generic.authorEmail": "nguyenthanhtung8196@gmail.com",
+		"doxdocgen.generic.paramTemplate": "@param      {param}    ",
+		"doxdocgen.generic.returnTemplate": "@return     {type}",
+		"doxdocgen.generic.includeTypeAtReturn": true,
+		"doxdocgen.generic.order": [
+			"brief",
+			"template",
+			"param",
+			"return"
+		],
+		"doxdocgen.c.setterText": "Set {name}"
+	}
+}

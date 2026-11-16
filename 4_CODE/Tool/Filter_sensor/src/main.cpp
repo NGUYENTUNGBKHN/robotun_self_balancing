@@ -2,6 +2,9 @@
 // Dear ImGui + ImPlot + GLFW + OpenGL3, serial (USB CDC) input.
 #include <GLFW/glfw3.h>
 
+// Hides the console window completely when the program runs
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
