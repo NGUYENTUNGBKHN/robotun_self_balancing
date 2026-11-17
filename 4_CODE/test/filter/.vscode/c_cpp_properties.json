@@ -13,7 +13,8 @@
             ],
             "cStandard": "gnu99",
             "cppStandard": "gnu++98",
-            "intelliSenseMode": "gcc-arm"
+            "intelliSenseMode": "gcc-arm",
+            "compilerPath": "${env:GCC_TOOLCHAIN_EXECUTE}"
         }
     ],
     "version": 4

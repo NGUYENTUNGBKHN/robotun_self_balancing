@@ -10,6 +10,7 @@
                 "UNICODE",
                 "_UNICODE"
             ],
+            "compilerPath": "${env:CL_LANG_TOOLCHAIN_EXECUTE}",
             "cStandard": "c11",
             "cppStandard": "c++11",
             "intelliSenseMode": "windows-msvc-x64"

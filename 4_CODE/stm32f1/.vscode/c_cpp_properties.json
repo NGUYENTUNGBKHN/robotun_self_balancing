@@ -3,7 +3,23 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/Common/**",
+                "${workspaceFolder}/Middleware/**",
+                "${workspaceFolder}/Application",
+                "${workspaceFolder}/Bootloader",
+                "${workspaceFolder}/Bootloader/boot_process",
+                "${workspaceFolder}/Bootloader/boot_process/operation",
+                "${workspaceFolder}/Middleware/Acc_Gyro",
+                "${workspaceFolder}/Middleware/Encoder",
+                "${workspaceFolder}/Middleware/Motor",
+                "${workspaceFolder}/Middleware/PID",
+                "${workspaceFolder}/OS/threadx/common/inc",
+                "${workspaceFolder}/OS/threadx/ports/cortex_m3/gnu/inc",
+                "${workspaceFolder}/SDK/Core/Include",
+                "${workspaceFolder}/SDK/Device/Inc",
+                "${workspaceFolder}/SDK/Driver/hal",
+                "${workspaceFolder}/SDK/Driver/hal/Inc"
             ],
             "defines": [
                 "_DEBUG",
@@ -13,7 +29,8 @@
             ],
             "cStandard": "gnu99",
             "cppStandard": "gnu++98",
-            "intelliSenseMode": "gcc-arm"
+            "intelliSenseMode": "gcc-arm",
+            "compilerPath": "${env:GCC_TOOLCHAIN_EXECUTE}"
         }
     ],
     "version": 4
