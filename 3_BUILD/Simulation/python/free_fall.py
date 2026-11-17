@@ -13,7 +13,7 @@ from matplotlib import animation
 from math import sin, cos, tanh, pi
 
 from robotun_lib.ode.ode_solver import integrate_rk4
-from robotun_lib.ctrl.pid_controller import PIDController
+from robotun_lib.control.pid_controller import PIDController
 
 
 # ----------------------------------------------------------------------------
