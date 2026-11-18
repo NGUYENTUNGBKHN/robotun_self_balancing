@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include "evaluation.h"
 #include "frame_parser.h"
 #include "sensor_data.h"
 #include "serial_port.h"
@@ -32,7 +33,7 @@
 class Reader {
 public:
     FrameParser parser;
-    std::atomic<bool> failed{false};
+    std::atomic<bool> failed{ false };
 
     ~Reader() { stop(); }
     bool running() const { return running_; }
@@ -82,7 +83,7 @@ private:
 
     SerialPort port_;
     std::thread th_;
-    std::atomic<bool> running_{false};
+    std::atomic<bool> running_{ false };
     std::mutex m_;
     std::vector<RawFrame> pending_;
     std::string error_;
@@ -126,14 +127,14 @@ public:
 
 private:
     double acc_ = 0, t_ = 0;
-    std::mt19937 rng_{12345};
+    std::mt19937 rng_{ 12345 };
 };
 
 // ============================================================================
 // Application
 // ============================================================================
-static const char* kChanNames[6] = {"ax", "ay", "az", "gx", "gy", "gz"};
-static const int kBauds[] = {9600, 115200, 230400, 460800, 921600, 1000000, 2000000, 3000000};
+static const char* kChanNames[6] = { "ax", "ay", "az", "gx", "gy", "gz" };
+static const int kBauds[] = { 9600, 115200, 230400, 460800, 921600, 1000000, 2000000, 3000000 };
 
 struct App {
     SensorData data;
@@ -161,6 +162,11 @@ struct App {
     bool specDb = true;
     std::vector<float> specFreq, specRaw, specFilt;
 
+    // filter evaluation tab
+    FilterEval eval;
+    bool evalAuto = false;
+    float evalTimer = 0.f;
+
     // stats
     uint64_t totalFrames = 0, lastFrames = 0;
     double measuredFps = 0, fpsTimer = 0;
@@ -177,11 +183,13 @@ struct App {
         std::vector<RawFrame> frames;
         if (useDemo) {
             demo.generate(wallDt, data.cfg, frames);
-        } else if (reader.running()) {
+        }
+        else if (reader.running()) {
             if (reader.failed) {
                 reader.stop();
                 status = "Connection lost (read error)";
-            } else {
+            }
+            else {
                 reader.drain(frames);
             }
         }
@@ -203,8 +211,8 @@ struct App {
         ImGui::SetNextWindowPos(vp->WorkPos);
         ImGui::SetNextWindowSize(vp->WorkSize);
         ImGui::Begin("##root", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
         ImGui::BeginChild("##controls", ImVec2(390, 0), true);
         drawControls();
@@ -219,7 +227,8 @@ struct App {
         ImGui::BeginChild("##plots", ImVec2(0, 0), false);
         if (ImGui::BeginTabBar("##tabs")) {
             if (ImGui::BeginTabItem("Time domain")) { drawTimePlots(); ImGui::EndTabItem(); }
-            if (ImGui::BeginTabItem("Spectrum"))    { drawSpectrum();  ImGui::EndTabItem(); }
+            if (ImGui::BeginTabItem("Spectrum")) { drawSpectrum();  ImGui::EndTabItem(); }
+            if (ImGui::BeginTabItem("Filter eval")) { drawEval();      ImGui::EndTabItem(); }
             ImGui::EndTabBar();
         }
         ImGui::EndChild();
@@ -254,7 +263,8 @@ struct App {
                 else status = "Error: " + reader.error();
             }
             ImGui::EndDisabled();
-        } else if (ImGui::Button("Disconnect", ImVec2(120, 0))) {
+        }
+        else if (ImGui::Button("Disconnect", ImVec2(120, 0))) {
             reader.stop();
             status = "Disconnected";
         }
@@ -282,7 +292,7 @@ struct App {
             dirty = true;
         }
         ImGui::Text("Frames: %llu   Bad sync: %llu", static_cast<unsigned long long>(totalFrames),
-                    static_cast<unsigned long long>(reader.parser.badFrames.load()));
+            static_cast<unsigned long long>(reader.parser.badFrames.load()));
 
         // ---- sensor -------------------------------------------------------------
         ImGui::SeparatorText("Sensor");
@@ -307,9 +317,10 @@ struct App {
         dirty |= ImGui::Combo("Type", &c.filterType, "1st-order IIR low-pass\0Butterworth 2nd-order\0Moving average\0");
         if (c.filterType == 2) {
             dirty |= ImGui::SliderInt("Window (samples)", &c.maWindow, 1, 256);
-        } else {
+        }
+        else {
             dirty |= ImGui::SliderFloat("Cutoff (Hz)", &c.cutoffHz, 0.1f, std::max(1.f, c.fs * 0.5f), "%.2f",
-                                        ImGuiSliderFlags_Logarithmic);
+                ImGuiSliderFlags_Logarithmic);
         }
 
         ImGui::SeparatorText("Angle estimators");
@@ -383,13 +394,13 @@ struct App {
         auto line = [&](const char* label, const std::vector<float>& y) {
             if (cntDec <= 0) return;
             ImPlot::PlotLine(label, S.t.data() + i0, y.data() + i0, cntDec, 0, 0,
-                             static_cast<int>(sizeof(float) * step));
-        };
+                static_cast<int>(sizeof(float) * step));
+            };
         const ImPlotAxisFlags yFlags = autoFitY ? (ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_RangeFit) : 0;
         auto setupPlot = [&](const char* ylabel) {
             ImPlot::SetupAxes("time (s)", ylabel, 0, yFlags);
             ImPlot::SetupAxisLimits(ImAxis_X1, v0, v1, follow ? ImPlotCond_Always : ImPlotCond_Once);
-        };
+            };
         auto trackView = [&]() {
             const ImPlotRect r = ImPlot::GetPlotLimits();
             viewMin = r.X.Min;
@@ -397,7 +408,7 @@ struct App {
             if (follow && ImPlot::IsPlotHovered() &&
                 (ImGui::IsMouseDragging(ImGuiMouseButton_Left) || ImGui::GetIO().MouseWheel != 0.f))
                 follow = false;  // user panned/zoomed -> stop following
-        };
+            };
 
         if (!ImPlot::BeginSubplots("##time", 4, 1, ImVec2(-1, -1), ImPlotSubplotFlags_LinkAllX)) return;
 
@@ -465,6 +476,104 @@ struct App {
             ImPlot::PlotLine("filtered", specFreq.data(), specFilt.data(), c);
             ImPlot::EndPlot();
         }
+    }
+
+    // ---- filter evaluation (delay / noise reduction) ---------------------------------
+    static void cell(float v, const char* fmt) {
+        if (std::isfinite(v)) ImGui::Text(fmt, static_cast<double>(v));
+        else ImGui::TextDisabled("n/a");
+    }
+
+    void drawEval() {
+        EvalParams& p = eval.p;
+        bool runNow = false;
+
+        ImGui::PushItemWidth(150);
+        ImGui::SliderFloat("Window (s)", &p.windowSec, 3.f, 60.f, "%.1f");
+        ImGui::SameLine();
+        ImGui::SliderFloat("Ref cutoff (Hz)", &p.refCutoffHz, 0.2f, 20.f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SameLine();
+        ImGui::SliderFloat("Max lag (ms)", &p.maxLagMs, 20.f, 500.f, "%.0f");
+        ImGui::SliderFloat("Min motion (deg)", &p.minMotionDeg, 0.1f, 20.f, "%.1f");
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        ImGui::Checkbox("Sweep curves", &p.sweep);
+        ImGui::SameLine();
+        if (ImGui::Button("Evaluate")) runNow = true;
+        ImGui::SameLine();
+        ImGui::Checkbox("Auto (1 Hz)", &evalAuto);
+
+        evalTimer += ImGui::GetIO().DeltaTime;
+        if (evalAuto && evalTimer >= 1.f) runNow = true;
+        if (runNow) {
+            eval.run(data);
+            evalTimer = 0.f;
+        }
+
+        const EvalResult& R = eval.res;
+        if (!R.valid) {
+            ImGui::TextWrapped("%s", R.msg.empty() ? "Press Evaluate (uses the most recent buffer data)." : R.msg.c_str());
+            return;
+        }
+
+        if (R.moving)
+            ImGui::Text("Window %.1f s | motion std %.2f deg -> delay & gain measured vs zero-phase reference",
+                static_cast<double>(R.usedWindowSec), static_cast<double>(R.motionStdDeg));
+        else
+            ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
+                "Window %.1f s is STATIC (motion std %.2f < %.1f deg): noise = plain std, delay not measurable. "
+                "Tilt/shake the sensor to measure delay.",
+                static_cast<double>(R.usedWindowSec), static_cast<double>(R.motionStdDeg),
+                static_cast<double>(p.minMotionDeg));
+
+        if (ImGui::BeginTable("##evtbl", 6,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Method", ImGuiTableColumnFlags_WidthStretch, 2.4f);
+            ImGui::TableSetupColumn("Delay (ms)");
+            ImGui::TableSetupColumn("Noise (deg)");
+            ImGui::TableSetupColumn("vs raw acc (dB)");
+            ImGui::TableSetupColumn("RMSE (deg)");
+            ImGui::TableSetupColumn("Gain");
+            ImGui::TableHeadersRow();
+            for (const auto& r : R.rows) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::TextUnformatted(r.name.c_str());
+                ImGui::TableNextColumn(); cell(r.delayMs, "%.1f");
+                ImGui::TableNextColumn(); cell(r.noiseDeg, "%.3f");
+                ImGui::TableNextColumn(); cell(r.reductionDb, "%.1f");
+                ImGui::TableNextColumn(); cell(r.rmseDeg, "%.3f");
+                ImGui::TableNextColumn(); cell(r.gain, "%.2f");
+            }
+            ImGui::EndTable();
+        }
+
+        if (!ImPlot::BeginSubplots("##evalplots", 1, 2, ImVec2(-1, -1))) return;
+
+        if (ImPlot::BeginPlot("Noise vs delay (lower-left is better)")) {
+            ImPlot::SetupAxes("delay (ms)", "noise (deg)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+            for (const auto& c : R.curves)
+                if (c.delayMs.size() >= 2)
+                    ImPlot::PlotLine(c.name.c_str(), c.delayMs.data(), c.noiseDeg.data(),
+                        static_cast<int>(c.delayMs.size()));
+            for (const auto& r : R.rows) {
+                if (!std::isfinite(r.delayMs) || !std::isfinite(r.noiseDeg)) continue;
+                const float d = r.delayMs, nz = std::max(r.noiseDeg, 1e-4f);
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond, 9);
+                ImPlot::PlotScatter(r.name.c_str(), &d, &nz, 1);
+            }
+            ImPlot::EndPlot();
+        }
+        if (ImPlot::BeginPlot("Evaluated window")) {
+            ImPlot::SetupAxes("time (s)", "deg", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+            for (size_t k = 0; k < R.series.size(); ++k) {
+                if (k == 0) ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, 3.f);
+                ImPlot::PlotLine(R.seriesNames[k].c_str(), R.t.data(), R.series[k].data(),
+                    static_cast<int>(R.t.size()));
+            }
+            ImPlot::EndPlot();
+        }
+        ImPlot::EndSubplots();
     }
 };
 

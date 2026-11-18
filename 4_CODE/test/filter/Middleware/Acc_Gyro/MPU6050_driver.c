@@ -185,11 +185,11 @@ code_status_t MPU6050_Init(MPU6050_driver_t *self)
         return ACE_ERROR;
     }
     TRACE_INFO("who_am_i = %x\n", who_am_i);
-    if (who_am_i != MPU6050_WHO_AM_I_VAL)
+    if ((who_am_i != MPU6050_WHO_AM_I_VAL) && (who_am_i != MPU6050_WHO_AM_I_VAL_FAKE))
     {
         return ACE_ERROR;
     }
-
+    TRACE_INFO("pass\n");
     /* Reset device to ensure clean state (reset value of PWR_MGMT_1 = sleep) */
     if (MPU6050_WriteReg(self, MPU6050_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET) != ACE_SUCCESS)
     {

@@ -33,6 +33,7 @@ extern "C"
 #define MPU6050_I2C_ADDR                (0x68U << 1)        /* 7-bit address 0x68 shifted for HAL (AD0=0) */
 #define MPU6050_I2C_ADDR_AD0_HIGH       (0x69U << 1)        /* 7-bit address 0x69 shifted for HAL (AD0=1) */
 #define MPU6050_WHO_AM_I_VAL            0x68U               /* Default WHO_AM_I value for MPU6050 */
+#define MPU6050_WHO_AM_I_VAL_FAKE        0x70U               /* Default WHO_AM_I value for MPU6050 */
 #define MPU6050_I2C_TIMEOUT_MS          100U
 
 #define MPU6050_BURST_LEN               14U                 /* ACCEL(6) + TEMP(2) + GYRO(6) */
