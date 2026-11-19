@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "../4_CODE/Tool/Filter_sensor"
+		},
+		{
+			"path": "../3_BUILD/Simulation"
 		}
 	],
 	"settings": {
