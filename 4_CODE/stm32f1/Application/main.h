@@ -31,6 +31,7 @@ extern "C"
 ***************************************************************************************************************/
 void led_init(void);
 void toggle_led(void);
+void Error_Handler(void);
 
 #ifdef __cplusplus
 }

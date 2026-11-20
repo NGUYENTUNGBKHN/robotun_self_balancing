@@ -12,11 +12,22 @@ file(GLOB APP_MILD_C_SRC       "${CMAKE_SOURCE_DIR}/Middleware/Acc_Gyro/*.c"
                                "${CMAKE_SOURCE_DIR}/Middleware/Motor/*.c"
                                "${CMAKE_SOURCE_DIR}/Middleware/PID/*.c")
 
+# Middleware USB sources
+file(GLOB USB_APP_SRC      "${CMAKE_SOURCE_DIR}/Middleware/USB/Device/App/*.c")
+file(GLOB USB_TARGET_SRC   "${CMAKE_SOURCE_DIR}/Middleware/USB/Device/Target/*.c")
+file(GLOB USB_CLASS_SRC    "${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Class/CDC/Src/*.c")
+file(GLOB USB_CORE_SRC     "${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Core/Src/*.c")
+
+
 add_executable(app
     ${APP_C_SRC}
     ${APP_ASM_S_SRC}
     ${APP_ASM_s_SRC}
     ${APP_MILD_C_SRC}
+    ${USB_APP_SRC}
+    ${USB_TARGET_SRC}
+    ${USB_CLASS_SRC}
+    ${USB_CORE_SRC}
 )
 
 # --------------------------------------------------------------------------
@@ -30,6 +41,10 @@ target_include_directories(app PRIVATE
     ${CMAKE_SOURCE_DIR}/Middleware/Encoder
     ${CMAKE_SOURCE_DIR}/Middleware/Motor
     ${CMAKE_SOURCE_DIR}/Middleware/PID
+    ${CMAKE_SOURCE_DIR}/Middleware/USB/Device/App
+    ${CMAKE_SOURCE_DIR}/Middleware/USB/Device/Target
+    ${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Class/CDC/Inc
+    ${CMAKE_SOURCE_DIR}/Middleware/USB/ST/Core/Inc
 )
 
 # --------------------------------------------------------------------------

@@ -67,7 +67,6 @@ static float            g_target_position = 0.0f;   /* Target wheel position in 
 **                                         INTERNAL FUNCTION PROTOTYPES
 ***************************************************************************************************************/
 static void SystemClock_Config(void);
-static void Error_Handler(void);
 static void Robot_Timer4_Init(void);
 static void Robot_Setup(void);
 
@@ -406,7 +405,7 @@ static void SystemClock_Config(void)
 /**
  * @brief  Generic error handler.
  */
-static void Error_Handler(void)
+void Error_Handler(void)
 {
     while (1)
     {
