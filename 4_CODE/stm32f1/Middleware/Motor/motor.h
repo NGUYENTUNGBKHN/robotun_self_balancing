@@ -53,6 +53,9 @@ extern "C"
  */
 #define MOTOR_PWM_MAX_SPEED         1000
 
+/* Default deadzone compensation (PWM required to overcome gearbox friction) */
+#define MOTOR_DEADZONE_DEFAULT      140
+
 /***************************************************************************************************************
 **                                         FUNCTION PROTOTYPES
 ***************************************************************************************************************/
@@ -61,6 +64,14 @@ extern "C"
  * @brief  Initialise GPIO and TIM2 PWM channels for both Left and Right motors
  */
 void Motor_Init(void);
+
+/**
+ * @brief  Compensate deadzone for motor PWM command
+ * @param  speed: Raw speed command (-1000 to +1000)
+ * @param  deadzone: Minimum PWM threshold to overcome static friction (e.g. 100 to 200)
+ * @return Compensated PWM command clamped to [-1000, 1000]
+ */
+int16_t Motor_CompensateDeadzone(int16_t speed, int16_t deadzone);
 
 /**
  * @brief  Set Left motor speed and direction

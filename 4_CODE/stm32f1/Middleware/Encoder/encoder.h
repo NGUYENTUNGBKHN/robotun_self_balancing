@@ -43,9 +43,9 @@ extern "C"
 #define ENCODER_RIGHT_EXTI_IRQN         EXTI15_10_IRQn
 
 /* Resolution configuration:
- * Measured empirically on the wheel output shaft: 2550 counts per revolution (4x decoding)
+ * Measured empirically on the wheel output shaft: 856 counts per revolution (4x decoding)
  */
-#define ENCODER_COUNTS_PER_REV          (2550.0f)
+#define ENCODER_COUNTS_PER_REV          (856.0f)//(856.0f)
 
 /***************************************************************************************************************
 **                                            TYPE DEFINITIONS

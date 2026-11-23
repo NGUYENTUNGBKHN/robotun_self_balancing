@@ -21,6 +21,7 @@
 **                                          INTERNAL MACRO DEFINITIONS
 ***************************************************************************************************************/
 #define TWO_PI                      (6.283185307179586f)
+#define ENCODER_RPM_FILTER_ALPHA    (0.25f)
 
 /***************************************************************************************************************
 **                                        INTERNAL VARIABLE DEFINITIONS
@@ -159,8 +160,11 @@ void Encoder_Left_Update(float dt)
     __enable_irq();
 
     float revs_per_sec = ((float)delta_ticks / ENCODER_COUNTS_PER_REV) / dt;
-    g_encoder_left.speed_rpm   = revs_per_sec * 60.0f;
-    g_encoder_left.speed_rad_s = revs_per_sec * TWO_PI;
+    float measured_rpm = revs_per_sec * 60.0f;
+    g_encoder_left.speed_rpm =
+        ENCODER_RPM_FILTER_ALPHA * measured_rpm +
+        (1.0f - ENCODER_RPM_FILTER_ALPHA) * g_encoder_left.speed_rpm;
+    g_encoder_left.speed_rad_s = g_encoder_left.speed_rpm * TWO_PI / 60.0f;
 
     g_encoder_left.total_revolutions = (float)total_ticks / ENCODER_COUNTS_PER_REV;
     g_encoder_left.angle_deg         = g_encoder_left.total_revolutions * 360.0f;
@@ -184,8 +188,11 @@ void Encoder_Right_Update(float dt)
     __enable_irq();
 
     float revs_per_sec = ((float)delta_ticks / ENCODER_COUNTS_PER_REV) / dt;
-    g_encoder_right.speed_rpm   = revs_per_sec * 60.0f;
-    g_encoder_right.speed_rad_s = revs_per_sec * TWO_PI;
+    float measured_rpm = revs_per_sec * 60.0f;
+    g_encoder_right.speed_rpm =
+        ENCODER_RPM_FILTER_ALPHA * measured_rpm +
+        (1.0f - ENCODER_RPM_FILTER_ALPHA) * g_encoder_right.speed_rpm;
+    g_encoder_right.speed_rad_s = g_encoder_right.speed_rpm * TWO_PI / 60.0f;
 
     g_encoder_right.total_revolutions = (float)total_ticks / ENCODER_COUNTS_PER_REV;
     g_encoder_right.angle_deg         = g_encoder_right.total_revolutions * 360.0f;

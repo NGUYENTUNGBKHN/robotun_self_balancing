@@ -85,6 +85,36 @@ void Motor_Init(void)
 }
 
 /**
+ * @brief  Compensate deadzone for motor PWM command
+ * @param  speed: Raw speed command (-1000 to +1000)
+ * @param  deadzone: Minimum PWM threshold (e.g. 100 to 200)
+ * @return Compensated PWM command clamped to [-1000, 1000]
+ */
+int16_t Motor_CompensateDeadzone(int16_t speed, int16_t deadzone)
+{
+    if (speed > 0)
+    {
+        int32_t compensated = (int32_t)speed + (int32_t)deadzone;
+        if (compensated > MOTOR_PWM_MAX_SPEED)
+        {
+            compensated = MOTOR_PWM_MAX_SPEED;
+        }
+        return (int16_t)compensated;
+    }
+    else if (speed < 0)
+    {
+        int32_t compensated = (int32_t)speed - (int32_t)deadzone;
+        if (compensated < -MOTOR_PWM_MAX_SPEED)
+        {
+            compensated = -MOTOR_PWM_MAX_SPEED;
+        }
+        return (int16_t)compensated;
+    }
+
+    return 0;
+}
+
+/**
  * @brief  Set Left motor speed and direction
  * @param  speed: -1000 to +1000
  */
